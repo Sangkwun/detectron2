@@ -18,6 +18,7 @@ from ..matcher import Matcher
 from ..sampling import subsample_labels
 from .build import PROPOSAL_GENERATOR_REGISTRY
 from .proposal_utils import find_top_rpn_proposals
+from .sasa import AttentionConv
 
 RPN_HEAD_REGISTRY = Registry("RPN_HEAD")
 RPN_HEAD_REGISTRY.__doc__ = """
@@ -150,10 +151,9 @@ class AttentionRPNHead(nn.Module):
 
         """
         super().__init__()
-        # TODO: Need to be sasa layer
-        self.conv = None
-        raise NotImplementedError
-    
+        # TODO: Need to set group with num_anchor
+        self.conv = AttentionConv(in_channels, in_channels, kernel_size=3, stride=1, padding=1)
+
         # 1x1 conv for predicting objectness logits
         self.objectness_logits = nn.Conv2d(in_channels, num_anchors, kernel_size=1, stride=1)
         # 1x1 conv for predicting box2box transform deltas
