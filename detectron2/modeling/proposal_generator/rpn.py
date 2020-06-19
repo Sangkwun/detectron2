@@ -6,7 +6,7 @@ from fvcore.nn import smooth_l1_loss
 from torch import nn
 
 from detectron2.config import configurable
-from detectron2.layers import ShapeSpec, cat
+from detectron2.layers import ShapeSpec, cat, AttentionConv
 from detectron2.structures import Boxes, ImageList, Instances, pairwise_iou
 from detectron2.utils.events import get_event_storage
 from detectron2.utils.memory import retry_if_cuda_oom
@@ -18,7 +18,6 @@ from ..matcher import Matcher
 from ..sampling import subsample_labels
 from .build import PROPOSAL_GENERATOR_REGISTRY
 from .proposal_utils import find_top_rpn_proposals
-from .sasa import AttentionConv
 
 RPN_HEAD_REGISTRY = Registry("RPN_HEAD")
 RPN_HEAD_REGISTRY.__doc__ = """
@@ -144,22 +143,24 @@ class StandardRPNHead(nn.Module):
 class AttentionRPNHead(nn.Module):
     """
     RPN Head with attention
+    experimental
     """
     @configurable
-    def __init__(self, *, in_channels: int, num_anchor: int, box_dim: int = 4):
+    def __init__(self, *, in_channels: int, num_anchors: int, box_dim: int = 4):
         """
-
+        NOTE: this interface is experimental.
         """
         super().__init__()
         # TODO: Need to set group with num_anchor
-        self.conv = AttentionConv(in_channels, in_channels, kernel_size=3, stride=1, padding=1)
+        self.conv = AttentionConv(in_channels, in_channels, kernel_size=3, stride=1, padding=1, groups=num_anchors)
 
         # 1x1 conv for predicting objectness logits
         self.objectness_logits = nn.Conv2d(in_channels, num_anchors, kernel_size=1, stride=1)
         # 1x1 conv for predicting box2box transform deltas
         self.anchor_deltas = nn.Conv2d(in_channels, num_anchors * box_dim, kernel_size=1, stride=1)
 
-        for l in [self.conv, self.objectness_logits, self.anchor_deltas]:
+        # for l in [self.conv, self.objectness_logits, self.anchor_deltas]:
+        for l in [self.objectness_logits, self.anchor_deltas]:
             nn.init.normal_(l.weight, std=0.01)
             nn.init.constant_(l.bias, 0)
 
